@@ -118,7 +118,7 @@ export def "compress-inplace" [
   }
   let predictedSize = (
     $items 
-    | each {|it| $it.size * (2Mb / (ffprobe-nu $it.name | get format.bit_rate | into filesize)) }
+    | each {|it| $it.size * (1Mb / (ffprobe-nu $it.name | get format.bit_rate | into filesize)) }
     | reduce --fold 0Mb {|it, acc| $acc + $it }
   )
   let totalSize = (
@@ -171,7 +171,7 @@ export def "compress-inplace" [
 
 export def "compress-big-videos" [] {
   compress-inplace { |it|
-    ((ls $it | get size | first) > 1gb) and ((ffprobe-nu $it | get format.bit_rate | into filesize) > 8Mb)
+    ((ls $it | get size | first) > 1gb) and ((ffprobe-nu $it | get format.bit_rate | into filesize) > 2Mb)
   }
 }
 
