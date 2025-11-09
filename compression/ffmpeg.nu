@@ -118,7 +118,7 @@ export def "compress-inplace" [
   }
   let predictedSize = (
     $items 
-    | each {|it| $it.size * (5Mb / (ffprobe-nu $it.name | get format.bit_rate | into filesize)) }
+    | each {|it| $it.size * (2Mb / (ffprobe-nu $it.name | get format.bit_rate | into filesize)) }
     | reduce --fold 0Mb {|it, acc| $acc + $it }
   )
   let totalSize = (
