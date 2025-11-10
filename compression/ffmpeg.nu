@@ -132,28 +132,30 @@ export def "compress-inplace" [
   let length = ($items | length)
  
   for full_src in ($items | get name) {
-    let parsed = ($full_src | path parse)
-    let temp_target = ($"000.compressing.($parsed.stem | str trim).($parsed.extension)")
-    print $"($index)/($length) * Encoding (ansi green_bold)`($full_src)`(ansi reset)"
-    $index = $index + 1
-    retry { 
-      compress-video-cpu $full_src $temp_target 
-    }
-    log debug $"Compression of ($full_src) to ($temp_target) finished, waiting for ffmpeg to unlock the temporary file"
-    if (not (until unlocked $temp_target --timeout 10min --holder "ffmpeg.exe") ) {
-      error make {msg: $"file ($temp_target) is locked by ffmpeg, cannot continue, please check if ffmpeg is running and try again", }
-    }
-    log debug $"ffmpeg unlocked the temporary file will proceed to switch temp file with original"
-    retry --count 30 --sleep 5sec { 
-      let src_length = (ffprobe-nu $full_src | get format.duration | into int)
-      let final_length = (ffprobe-nu $temp_target | get format.duration | into int)
-      # 30 sec tolerance
-      if ($src_length - 30) >= $final_length {
-        error make {msg: $"original file is longer than converted file, unacceptable, src: ($full_src), diff: ($src_length - $final_length)", }
+    try {
+      let parsed = ($full_src | path parse)
+      let temp_target = ($"000.compressing.($parsed.stem | str trim).($parsed.extension)")
+      print $"($index)/($length) * Encoding (ansi green_bold)`($full_src)`(ansi reset)"
+      $index = $index + 1
+      retry { 
+        compress-video-cpu $full_src $temp_target 
       }
-      log debug $"Final length: ($final_length), source length: ($src_length), difference: ($src_length - $final_length)"
-      mv --force $temp_target $full_src
-    }
+      log debug $"Compression of ($full_src) to ($temp_target) finished, waiting for ffmpeg to unlock the temporary file"
+      if (not (until unlocked $temp_target --timeout 10min --holder "ffmpeg.exe") ) {
+        error make {msg: $"file ($temp_target) is locked by ffmpeg, cannot continue, please check if ffmpeg is running and try again", }
+      }
+      log debug $"ffmpeg unlocked the temporary file will proceed to switch temp file with original"
+      retry --count 30 --sleep 5sec { 
+        let src_length = (ffprobe-nu $full_src | get format.duration | into int)
+        let final_length = (ffprobe-nu $temp_target | get format.duration | into int)
+        # 30 sec tolerance
+        if ($src_length - 30) >= $final_length {
+          error make {msg: $"original file is longer than converted file, unacceptable, src: ($full_src), diff: ($src_length - $final_length)", }
+        }
+        log debug $"Final length: ($final_length), source length: ($src_length), difference: ($src_length - $final_length)"
+        mv --force $temp_target $full_src
+      }
+    } catch { |err| $err.msg }
   }
 
   let now = (date now)
